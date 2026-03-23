@@ -51,8 +51,9 @@ class DisenadorNanoBanana:
                         payload = {
                             "prompt": p_variacion,
                             "model": model_name or "flux",
-                            "width": 768,
-                            "height": 1344,
+                            "width": 704,
+                            "height": 1216,
+                            "aspect_ratio": "9:16",
                             "seed": random.randint(1, 999999),
                             "nologo": True,
                             "enhance": False

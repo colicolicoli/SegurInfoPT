@@ -749,7 +749,7 @@
                             ${post.has_images ? `
                                 <div class="image-gallery">
                                     ${post.imagenes.map((img, i) => `
-                                        <div class="image-option" data-index="${i}" onclick="selectImage('${post.id}', ${i})">
+                                        <div class="image-option" data-index="${i}" onclick="selectImage('${post.id}', ${i})" ondblclick="window.open('/' + '${img.replace(/\\/g, '/')}', '_blank')">
                                             <img src="/${img.replace(/\\/g, '/')}?t=${Date.now()}" alt="Opción ${i}">
                                             <div class="label-selection">ELEGIDA</div>
                                         </div>
