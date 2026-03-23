@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SegurInfo Center - Cyberpunk Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-blue: #00f3ff;
+            --neon-pink: #ff00ff;
+            --dark-bg: #0a0a12;
+            --card-bg: #151525;
+            --text: #e0e0e0;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: var(--text);
+            font-family: 'Rajdhani', sans-serif;
+            margin: 0;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            text-align: center;
+            color: var(--neon-blue);
+            text-shadow: 0 0 10px var(--neon-blue);
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            margin-bottom: 40px;
+        }
+
+        .header-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 20px;
+        }
+
+        .date-selector {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            background: rgba(0,255,255,0.05);
+            padding: 10px 20px;
+            border: 1px solid var(--neon-blue);
+            border-radius: 4px;
+        }
+
+        /* Consola de Logs */
+        .terminal-container {
+            background: #000;
+            border: 1px solid var(--neon-blue);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            font-family: 'Courier New', Courier, monospace;
+            display: none; /* Se muestra al buscar */
+        }
+
+        .terminal-header {
+            color: var(--neon-blue);
+            font-size: 0.8rem;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #222;
+            padding-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .terminal-body {
+            height: 200px;
+            overflow-y: auto;
+            color: #0f0; /* Color terminal clásico */
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+        }
+
+        .btn-search {
+            background: linear-gradient(45deg, var(--neon-blue), #0055ff);
+            color: black;
+            font-weight: bold;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 0 15px var(--neon-blue);
+            transition: all 0.3s;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        .btn-search:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 25px var(--neon-blue);
+        }
+
+        .btn-reset {
+            background: transparent;
+            color: #94a3b8;
+            border: 1px solid #334155;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.7rem;
+            transition: all 0.3s;
+            font-family: 'Orbitron', sans-serif;
+        }
+        .btn-reset:hover {
+            border-color: #ef4444;
+            color: #ef4444;
+            box-shadow: 0 0 10px #ef4444;
+        }
+
+        .btn-search:disabled {
+            background: #333;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .post-card {
+            background: var(--card-bg);
+            border: 1px solid var(--neon-blue);
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
+            margin-bottom: 40px;
+            padding: 25px;
+            border-radius: 5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .post-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 4px; height: 100%;
+            background: var(--neon-pink);
+        }
+
+        .post-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        .post-title {
+            font-size: 1.5rem;
+            color: var(--neon-blue);
+            font-weight: 700;
+        }
+
+        .metadata {
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .image-gallery {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        .image-option {
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .image-option img {
+            width: 100%;
+            border-radius: 3px;
+            opacity: 0.7;
+        }
+
+        .image-option.selected {
+            border-color: var(--neon-pink);
+            box-shadow: 0 0 15px var(--neon-pink);
+        }
+
+        .image-option.selected img {
+            opacity: 1;
+        }
+
+        .label-selection {
+            position: absolute;
+            top: 5px; right: 5px;
+            background: var(--neon-pink);
+            color: white;
+            padding: 2px 8px;
+            font-size: 0.7rem;
+            display: none;
+        }
+
+        .image-option.selected .label-selection {
+            display: block;
+        }
+
+        .text-preview {
+            background: rgba(0,0,0,0.3);
+            padding: 20px;
+            border-radius: 4px;
+            border: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .caption-edit {
+            background: #111;
+            border: 1px solid #444;
+            color: #ccc;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1rem;
+            padding: 10px;
+            height: 150px;
+            resize: vertical;
+            margin-bottom: 10px;
+        }
+
+        .caption-edit:focus {
+            border-color: var(--neon-blue);
+            outline: none;
+        }
+
+        .actions {
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn-secondary {
+            border-color: var(--neon-blue);
+            color: var(--neon-blue);
+            font-size: 0.8rem;
+            padding: 8px 15px;
+        }
+
+        .btn-secondary:hover {
+            background: var(--neon-blue);
+            box-shadow: 0 0 15px var(--neon-blue);
+        }
+
+        button {
+            background: transparent;
+            border: 2px solid var(--neon-pink);
+            color: var(--neon-pink);
+            padding: 12px 30px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        button:hover {
+            background: var(--neon-pink);
+            color: white;
+            box-shadow: 0 0 20px var(--neon-pink);
+        }
+
+        button:disabled {
+            border-color: #555;
+            color: #555 !important;
+            box-shadow: none !important;
+            cursor: not-allowed;
+            background: transparent !important;
+        }
+
+        .btn-story {
+            border-color: #00ff88 !important;
+            color: #00ff88 !important;
+            margin-left: 10px;
+        }
+        .btn-story:hover {
+            background: #00ff88 !important;
+            color: black !important;
+            box-shadow: 0 0 15px #00ff88 !important;
+        }
+
+        .error-overlay {
+            color: #ff4444;
+            font-size: 0.8rem;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .badge-category {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            border: 1px solid transparent;
+        }
+        .cat-vulnerabilidad { border-color: #ffaa00; color: #ffaa00; background: rgba(255,170,0,0.1); }
+        .cat-incidente { border-color: #ff4444; color: #ff4444; background: rgba(255,68,68,0.1); }
+        .cat-malware { border-color: #00ff88; color: #00ff88; background: rgba(0,255,136,0.1); }
+        .cat-latam { border-color: #00f3ff; color: #00f3ff; background: rgba(0,243,255,0.1); }
+        .cat-general { border-color: #aaa; color: #aaa; background: rgba(170,170,170,0.1); }
+
+        /* Colapsable */
+        .collapsible-container {
+            border: 1px solid #333;
+            border-radius: 8px;
+            margin-top: 40px;
+            overflow: hidden;
+        }
+
+        .collapsible-header {
+            background: rgba(255, 0, 255, 0.1);
+            color: var(--neon-pink);
+            padding: 15px 25px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: 'Orbitron', sans-serif;
+            border-bottom: 1px solid #333;
+        }
+
+        .collapsible-header:hover {
+            background: rgba(255, 0, 255, 0.2);
+        }
+
+        .collapsible-content {
+            padding: 25px;
+            display: none;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .section-title {
+            color: var(--neon-blue);
+            font-family: 'Orbitron', sans-serif;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--neon-blue);
+            padding-left: 15px;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-nav">
+            <h1>SegurInfo <span style="color:white">Control Center</span> <span style="font-size: 0.6rem; vertical-align: middle; color: #555; border: 1px solid #333; padding: 2px 5px; border-radius: 4px; margin-left: 10px;">v2.8-USER-LOOP (21:55)</span></h1>
+            <div style="display:flex; gap: 15px; align-items: center;">
+                <button class="btn-search" id="btn-search" onclick="startGeneration()">🔍 BUSCAR INCIDENTES</button>
+                <button class="btn-reset" onclick="resetMotor()" title="Usar solo si el sistema se queda trabado en 'Ocupado'">🔄 REINICIAR MOTOR</button>
+                <div class="date-selector">
+                    <button class="btn-secondary" id="btn-prev" onclick="changeDate(1)">◀ ANTERIOR</button>
+                    <div id="current-date-display">CARGANDO...</div>
+                    <button class="btn-secondary" id="btn-next" onclick="changeDate(-1)">SIGUIENTE ▶</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Consola de Logs Global (para búsquedas) -->
+        <div id="terminal-global" class="terminal-container">
+            <div class="terminal-header">
+                <span>>_ OSINT_GLOBAL_SEARCH</span>
+                <span id="terminal-status-global">EJECUTANDO...</span>
+            </div>
+            <div id="terminal-body-global" class="terminal-body"></div>
+        </div>
+        
+        <div class="collapsible-container">
+            <div class="collapsible-header" style="color: var(--neon-blue); background: rgba(0,  255, 255, 0.1); border-bottom-color: var(--neon-blue);" onclick="toggleSection('top5-collapsible', 'top5-arrow')">
+                <span>🔥 NOTICIAS DESTACADAS (TOP 5)</span>
+                <span id="top5-arrow">▲</span>
+            </div>
+            <div id="top5-collapsible" class="collapsible-content" style="display: block;">
+                <div id="posts-container">
+                    <!-- Cargando... -->
+                </div>
+                <div id="empty-state" style="display:none; text-align: center; margin-bottom: 20px;">
+                    👾 No hay noticias destacadas para esta fecha.
+                </div>
+            </div>
+        </div>
+
+        <div class="collapsible-container">
+            <div class="collapsible-header" style="color: #888; background: rgba(255, 255, 255, 0.05); border-bottom-color: #444;" onclick="toggleSection('lite-collapsible', 'lite-arrow')">
+                <span>📝 OTRAS NOVEDADES (RESÚMENES)</span>
+                <span id="lite-arrow">▼</span>
+            </div>
+            <div id="lite-collapsible" class="collapsible-content">
+                <div id="lite-posts-container">
+                    <!-- Lite contents -->
+                </div>
+            </div>
+        </div>
+        
+        <div class="collapsible-container">
+            <div class="collapsible-header" onclick="toggleSection('published-collapsible', 'published-arrow')">
+                <span>📰 ARCHIVO DE PUBLICADAS</span>
+                <span id="published-arrow">▼</span>
+            </div>
+            <div id="published-collapsible" class="collapsible-content">
+                <div id="published-container">
+                    <!-- Publicadas -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let pendingPosts = [];
+        let publishedPosts = [];
+        let availableDates = [];
+        let currentDateIndex = 0;
+        let logInterval = null;
+
+        async function init() {
+            try {
+                const res = await fetch('/api/dates');
+                availableDates = await res.json();
+                if (availableDates.length > 0) {
+                    await loadPosts(availableDates[0]);
+                } else {
+                    document.getElementById('current-date-display').innerText = "LISTO";
+                    renderPosts();
+                }
+            } catch (err) {
+                document.getElementById('current-date-display').innerText = "ERROR";
+            }
+        }
+
+        async function startGeneration() {
+            const btn = document.getElementById('btn-search');
+            btn.disabled = true;
+            btn.innerText = "⏳ BUSCANDO...";
+            
+            const term = document.getElementById('terminal-global');
+            term.style.display = 'block';
+            document.getElementById('terminal-body-global').innerHTML = "Iniciando motor de búsqueda...\n";
+
+            const res = await fetch('/api/run-generator', { method: 'POST' });
+            const data = await res.json();
+            
+            if (data.status === 'success') {
+                startPollingLogs('global');
+            } else {
+                alert(data.message);
+                btn.disabled = false;
+                btn.innerText = "🔍 BUSCAR INCIDENTES";
+            }
+        }
+
+        function startPollingLogs(type, postId = null) {
+            const bodyId = type === 'global' ? 'terminal-body-global' : `terminal-body-${postId}`;
+            const statusId = type === 'global' ? 'terminal-status-global' : `terminal-status-${postId}`;
+            
+            if (logInterval) clearInterval(logInterval);
+            logInterval = setInterval(async () => {
+                const res = await fetch('/api/logs');
+                const data = await res.json();
+                
+                const termBody = document.getElementById(bodyId);
+                if (termBody) {
+                    termBody.innerText = data.logs;
+                    termBody.scrollTop = termBody.scrollHeight;
+                }
+
+                if (!data.running) {
+                    clearInterval(logInterval);
+                    document.getElementById(statusId).innerText = "✅ FINALIZADO";
+                    if (type === 'global') {
+                        document.getElementById('btn-search').disabled = false;
+                        document.getElementById('btn-search').innerText = "🔍 BUSCAR INCIDENTES";
+                        await init(); 
+                    }
+                }
+            }, 1000);
+        }
+
+        async function resetMotor() {
+            if (!confirm("¿Deseas intentar forzar el reinicio del motor? Hazlo solo si ves que el sistema dice 'Ocupado' permanentemente.")) return;
+            try {
+                const res = await fetch('/api/reset-state', { method: 'POST' });
+                const data = await res.json();
+                alert(data.message);
+                location.reload();
+            } catch (err) { alert("Error al reiniciar"); }
+        }
+
+        async function loadPosts(date) {
+            document.getElementById('current-date-display').innerText = date || "SIN FECHA";
+            
+            const resPending = await fetch(`/api/pending?date=${date}`);
+            pendingPosts = await resPending.json();
+            
+            const resPublished = await fetch(`/api/published?date=${date}`);
+            publishedPosts = await resPublished.json();
+            
+            renderPosts();
+            updateNavButtons();
+        }
+
+        function updateNavButtons() {
+            document.getElementById('btn-prev').disabled = currentDateIndex >= availableDates.length - 1;
+            document.getElementById('btn-next').disabled = currentDateIndex <= 0;
+        }
+
+        async function changeDate(delta) {
+            const newIndex = currentDateIndex + delta;
+            if (newIndex >= 0 && newIndex < availableDates.length) {
+                currentDateIndex = newIndex;
+                const newDate = availableDates[currentDateIndex];
+                console.log("Cambiando a fecha:", newDate, "Index:", currentDateIndex);
+                await loadPosts(newDate);
+            }
+        }
+
+        function selectImage(postId, index) {
+            const card = document.getElementById(`card-${postId}`);
+            card.querySelectorAll('.image-option').forEach(el => el.classList.remove('selected'));
+            card.querySelector(`.image-option[data-index="${index}"]`).classList.add('selected');
+            card.querySelector('.btn-publish').disabled = false;
+            card.dataset.selectedIndex = index;
+        }
+
+        async function regenerateImages(postId) {
+            const card = document.getElementById(`card-${postId}`);
+            const btn = card.querySelector('.btn-regen') || card.querySelector('.btn-search');
+            const terminalCard = document.getElementById(`terminal-${postId}`);
+            const errorOverlay = card.querySelector('.error-overlay');
+            
+            // Capturamos los campos editados por el usuario para inyectar "onda"
+            const customTitle = card.querySelector('.hook-edit') ? card.querySelector('.hook-edit').value : "";
+            const customPrompt = card.querySelector('.prompt-edit') ? card.querySelector('.prompt-edit').value : "";
+            
+            if (!confirm("Esto ocupará créditos de IA. ¿Deseas continuar?")) return;
+            
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = "GENERANDO...";
+            }
+            
+            if (terminalCard) {
+                terminalCard.style.display = 'block';
+                document.getElementById(`terminal-body-${postId}`).innerHTML = "Invocando al Diseñador AI con Hook personalizado...\n";
+                document.getElementById(`terminal-status-${postId}`).innerText = "EJECUTANDO...";
+                startPollingLogs('local', postId);
+            }
+            if (errorOverlay) errorOverlay.style.display = "none";
+
+            try {
+                const res = await fetch('/api/regenerate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        post_id: postId,
+                        custom_title: customTitle,
+                        custom_prompt: customPrompt
+                    })
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                    const idx = pendingPosts.findIndex(p => p.id === postId);
+                    if (idx !== -1) pendingPosts[idx] = data;
+                    renderPosts();
+                } else {
+                    alert("Error: " + data.detail);
+                }
+            } catch (err) {
+                alert("Error de conexión");
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerText = "🔄 GENERAR VARIANTE +";
+                }
+            }
+        }
+
+        async function saveCaption(postId) {
+            const card = document.getElementById(`card-${postId}`);
+            const caption = card.querySelector('.caption-edit').value;
+            const btn = card.querySelector('.btn-save');
+            
+            btn.innerText = "Guardando...";
+            const res = await fetch('/api/save-caption', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ post_id: postId, caption: caption })
+            });
+            if(res.ok) btn.innerText = "✓ GUARDADO";
+            setTimeout(() => { btn.innerText = "💾 GUARDAR TEXTO"; }, 2000);
+        }
+
+        async function approvePost(postId) {
+            const card = document.getElementById(`card-${postId}`);
+            const index = card.dataset.selectedIndex;
+            const btn = card.querySelector('.btn-publish');
+            const errorOverlay = card.querySelector('.error-overlay');
+            const terminalCard = document.getElementById(`terminal-${postId}`);
+            
+            if(index === "-1") {
+                alert("Por favor selecciona una imagen primero.");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = "Publicando...";
+            errorOverlay.style.display = "none";
+
+            // Activar consola local en la noticia
+            terminalCard.style.display = 'block';
+            document.getElementById(`terminal-body-${postId}`).innerHTML = "Conectando con Instagram...\n";
+            document.getElementById(`terminal-status-${postId}`).innerText = "EJECUTANDO...";
+            
+            startPollingLogs('local', postId);
+
+            try {
+                const res = await fetch('/api/approve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ post_id: postId, image_index: parseInt(index) })
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                    card.style.opacity = '0.5';
+                    btn.innerText = "¡PUBLICADO!";
+                } else {
+                    errorOverlay.innerText = "ERROR: " + data.detail;
+                    errorOverlay.style.display = "block";
+                    btn.disabled = false;
+                    btn.innerText = "🚀 REINTENTAR PUBLICACIÓN";
+                }
+            } catch (err) {
+                errorOverlay.innerText = "ERROR DE CONEXIÓN AL SERVIDOR";
+                errorOverlay.style.display = "block";
+                btn.disabled = false;
+            }
+        }
+
+        async function publishStory(postId) {
+            const card = document.getElementById(`card-${postId}`);
+            const index = card.dataset.selectedIndex;
+            const btn = card.querySelector('.btn-story');
+            const terminalCard = document.getElementById(`terminal-${postId}`);
+
+            if(index === "-1") {
+                alert("Por favor selecciona una imagen primero.");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = "📱 SUBIENDO...";
+            
+            terminalCard.style.display = 'block';
+            document.getElementById(`terminal-body-${postId}`).innerHTML = "Preparando Story con Link Sticker...\n";
+            startPollingLogs('local', postId);
+
+            try {
+                const res = await fetch('/api/publish-story', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ post_id: postId, image_index: parseInt(index) })
+                });
+
+                if (res.ok) {
+                    btn.innerText = "✅ STORY OK!";
+                    btn.style.borderColor = "#00ff88";
+                    btn.style.color = "#00ff88";
+                } else {
+                    const data = await res.json();
+                    alert("Error story: " + data.detail);
+                    btn.disabled = false;
+                    btn.innerText = "📱 REINTENTAR STORY";
+                }
+            } catch (err) {
+                alert("Error de red");
+                btn.disabled = false;
+            }
+        }
+
+        function toggleSection(contentId, arrowId) {
+            const content = document.getElementById(contentId);
+            const arrow = document.getElementById(arrowId);
+            if (content.style.display === 'block') {
+                content.style.display = 'none';
+                arrow.innerText = '▼';
+            } else {
+                content.style.display = 'block';
+                arrow.innerText = '▲';
+            }
+        }
+
+        function renderPosts() {
+            const container = document.getElementById('posts-container');
+            const liteContainer = document.getElementById('lite-posts-container');
+            const empty = document.getElementById('empty-state');
+            const pubContainer = document.getElementById('published-container');
+            
+            const fullPending = pendingPosts.filter(p => p.has_images);
+            const litePending = pendingPosts.filter(p => !p.has_images);
+            
+            renderPostList(fullPending, container, "🚀 PUBLICAR EN INSTAGRAM");
+            renderPostList(litePending, liteContainer, "🚀 PUBLICAR (SIN IMAGEN)");
+            renderPostList(publishedPosts, pubContainer, "🔄 VOLVER A PUBLICAR");
+            
+            if (fullPending.length === 0) {
+                empty.style.display = "block";
+            } else {
+                empty.style.display = "none";
+            }
+        }
+
+        function renderPostList(postList, targetContainer, publishBtnText) {
+            if (postList.length === 0) {
+                targetContainer.innerHTML = "<div style='color:#555; margin-bottom: 20px;'>No hay posts en esta sección.</div>";
+                return;
+            }
+
+            targetContainer.innerHTML = postList.map(post => `
+                <div class="post-card" id="card-${post.id}" data-selected-index="-1">
+                    <div class="card-header">
+                        <span class="badge-category cat-${(post.categoria || 'general').toLowerCase()}">${post.categoria || 'GENERAL'}</span>
+                        <h3 class="card-title">${post.titulo_original}</h3>
+                    </div>
+                    <div class="metadata">${post.fecha} | ID: ${post.id}</div>
+                    
+                    <div class="content-grid">
+                        <div>
+                            ${post.has_images ? `
+                                <div class="image-gallery">
+                                    ${post.imagenes.map((img, i) => `
+                                        <div class="image-option" data-index="${i}" onclick="selectImage('${post.id}', ${i})">
+                                            <img src="/${img.replace(/\\/g, '/')}?t=${Date.now()}" alt="Opción ${i}">
+                                            <div class="label-selection">ELEGIDA</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                <div style="margin-top:15px">
+                                    <button class="btn-secondary btn-regen" onclick="regenerateImages('${post.id}')">🔄 GENERAR VARIANTE +</button>
+                                </div>
+                            ` : `
+                                <div style="background: rgba(255,255,255,0.05); padding: 40px; text-align: center; border: 1px dashed #444; border-radius: 4px;">
+                                    <div style="font-size: 2rem; margin-bottom: 10px;">📸</div>
+                                    <div class="metadata">Sin imágenes generadas aún.</div>
+                                    <button class="btn-search" style="margin-top:20px; font-size: 0.8rem;" onclick="regenerateImages('${post.id}')">🔥 GENERAR PIEZA VISUAL</button>
+                                </div>
+                            `}
+                        </div>
+                        
+                        <div class="text-preview">
+                            <label class="metadata">Instagram Caption:</label>
+                            <textarea class="caption-edit">${post.caption_ig}</textarea>
+                            
+                            <div style="margin-top:15px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border: 1px solid #333;">
+                                <label class="metadata" style="color:var(--neon-pink); display:block; margin-bottom:5px;">🎨 CONFIGURACIÓN DE IMAGEN (HOOK):</label>
+                                <input type="text" class="hook-edit" value="${post.titulo_imagen || ''}" placeholder="Ej: ALERTA PHISHING" style="width:100%; background:#111; color:white; border:1px solid #444; padding:8px; border-radius:4px; margin-bottom:10px;">
+                                <label class="metadata">Prompt Visual (Inglés):</label>
+                                <textarea class="prompt-edit" style="height:60px; font-size:0.7rem;">${post.prompt_visual || ''}</textarea>
+                            </div>
+
+                            <button class="btn-secondary btn-save" style="margin-top:10px;" onclick="saveCaption('${post.id}')">💾 GUARDAR TEXTO</button>
+                            
+                            <div class="metadata" style="margin-top:20px"><strong>Fuente:</strong> <a href="${post.fuente}" target="_blank" style="color:var(--neon-blue)">Link Original</a></div>
+                        </div>
+                    </div>
+
+                    <div class="actions">
+                        <div class="error-overlay"></div>
+                        <div style="display:flex; gap:10px; width:100%;">
+                            <button class="btn-publish" style="flex:2" onclick="approvePost('${post.id}')" ${post.estado==='publicado'? '' : 'disabled'}>${publishBtnText}</button>
+                            ${post.has_images ? `<button class="btn-story" style="flex:1" onclick="publishStory('${post.id}')">📱 STORY</button>` : ''}
+                        </div>
+                    </div>
+
+                    <!-- Consola Local para esta noticia -->
+                    <div id="terminal-${post.id}" class="terminal-container" style="margin-top: 20px; border-color: var(--neon-pink);">
+                        <div class="terminal-header" style="color: var(--neon-pink);">
+                            <span>>_ PUBLISHING_MODULE [${post.id}]</span>
+                            <span id="terminal-status-${post.id}">LISTO</span>
+                        </div>
+                        <div id="terminal-body-${post.id}" class="terminal-body" style="height: 100px; color: #ff00ff77;"></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        init();
+    </script>
+</body>
+</html>
