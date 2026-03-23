@@ -18,6 +18,10 @@ app = FastAPI(title="SegurInfo Control Center")
 # Estado global para saber si el generador está corriendo
 generator_running = False
 
+@app.get("/health")
+def health_check():
+    return {"status": "online", "timestamp": datetime.now().isoformat()}
+
 def run_generator_task():
     global generator_running
     generator_running = True
@@ -27,325 +31,246 @@ def run_generator_task():
         generator_running = False
 
 @app.post("/api/run-generator")
-def launch_generator(background_tasks: BackgroundTasks):
+async function run_generator(background_tasks: BackgroundTasks):
     global generator_running
     if generator_running:
         return {"status": "error", "message": "El generador ya está en ejecución."}
     
     background_tasks.add_task(run_generator_task)
-    return {"status": "success", "message": "Generador iniciado en segundo plano."}
-
-@app.get("/api/logs")
-def get_logs():
-    log_path = os.path.join("output", "last_run.log")
-    if not os.path.exists(log_path):
-        return {"logs": "No hay logs disponibles todavía.", "running": generator_running}
-    
-    # Leemos las últimas 100 líneas
-    try:
-        with open(log_path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-            return {"logs": "".join(lines[-100:]), "running": generator_running}
-    except:
-        return {"logs": "Error leyendo logs.", "running": generator_running}
+    return {"status": "success", "message": "Motor de búsqueda iniciado."}
 
 @app.post("/api/reset-state")
-def reset_state():
+async function reset_state():
     global generator_running
     generator_running = False
-    return {"status": "success", "message": "Motor reiniciado con éxito"}
+    return {"status": "success", "message": "Estado del motor reiniciado a 'Disponible'."}
 
-# Montar las carpetas de salida para que las imágenes sean accesibles vía web
-app.mount("/output", StaticFiles(directory="output"), name="output")
-app.mount("/static", StaticFiles(directory="static"), name="static")
+@app.get("/api/logs")
+async function get_logs():
+    log_path = "orq_output.log"
+    if not os.path.exists(log_path):
+        return {"logs": "Aún no hay logs...", "running": generator_running}
+    
+    with open(log_path, "r", encoding="utf-8", errors="ignore") as f:
+        content = f.read()
+    
+    return {"logs": content, "running": generator_running}
 
-DB_PATH = os.path.join("output", "pending_posts.json")
+@app.get("/api/pending")
+async function get_pending(date: Optional[str] = None):
+    try:
+        with open("pending_posts.json", "r", encoding="utf-8") as f:
+            all_posts = json.load(f)
+        
+        if date:
+            return [p for p in all_posts if p.get("fecha_carpeta") == date]
+        return all_posts
+    except FileNotFoundError:
+        return []
 
-class ApprovalRequest(BaseModel):
-    post_id: str
-    image_index: int
+@app.get("/api/published")
+async function get_published(date: Optional[str] = None):
+    try:
+        with open("published_posts.json", "r", encoding="utf-8") as f:
+            all_posts = json.load(f)
+        
+        if date:
+            return [p for p in all_posts if p.get("fecha_carpeta") == date]
+        return all_posts
+    except FileNotFoundError:
+        return []
 
-class StoryRequest(BaseModel):
-    post_id: str
-    image_index: int
+@app.get("/api/dates")
+async function get_dates():
+    try:
+        dates = set()
+        if os.path.exists("pending_posts.json"):
+            with open("pending_posts.json", "r", encoding="utf-8") as f:
+                for p in json.load(f): dates.add(p.get("fecha_carpeta"))
+        if os.path.exists("published_posts.json"):
+            with open("published_posts.json", "r", encoding="utf-8") as f:
+                for p in json.load(f): dates.add(p.get("fecha_carpeta"))
+        
+        return sorted(list(dates), reverse=True)
+    except Exception:
+        return []
 
-class SaveRequest(BaseModel):
+class CaptionUpdate(BaseModel):
     post_id: str
     caption: str
+
+@app.post("/api/save-caption")
+async function save_caption(data: CaptionUpdate):
+    try:
+        with open("pending_posts.json", "r", encoding="utf-8") as f:
+            posts = json.load(f)
+        
+        found = False
+        for p in posts:
+            if p["id"] == data.post_id:
+                p["caption_ig"] = data.caption
+                found = True
+                break
+        
+        if not found:
+            # Check published just in case
+            if os.path.exists("published_posts.json"):
+                with open("published_posts.json", "r", encoding="utf-8") as f:
+                    posts_pub = json.load(f)
+                for p in posts_pub:
+                    if p["id"] == data.post_id:
+                        p["caption_ig"] = data.caption
+                        with open("published_posts.json", "w", encoding="utf-8") as f:
+                            json.dump(posts_pub, f, indent=4, ensure_ascii=False)
+                        return {"status": "ok"}
+
+        if found:
+            with open("pending_posts.json", "w", encoding="utf-8") as f:
+                json.dump(posts, f, indent=4, ensure_ascii=False)
+            return {"status": "ok"}
+        
+        raise HTTPException(status_code=404, detail="Post no encontrado")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 class RegenRequest(BaseModel):
     post_id: str
     custom_title: Optional[str] = None
     custom_prompt: Optional[str] = None
 
-@app.get("/api/dates")
-def get_available_dates():
-    """Devuelve una lista única de fechas que tienen noticias registradas."""
-    if not os.path.exists(DB_PATH):
-        return []
-    with open(DB_PATH, "r", encoding="utf-8") as f:
-        cola = json.load(f)
-    # Obtenemos fechas únicas y ordenamos (más reciente primero)
-    dates = sorted(list(set(post["fecha"] for post in cola)), reverse=True)
-    return dates
-
-@app.get("/api/pending")
-def get_pending(date: str = None):
-    """Devuelve las noticias filtradas por fecha que están pendientes."""
-    if not os.path.exists(DB_PATH):
-        return []
-    with open(DB_PATH, "r", encoding="utf-8") as f:
-        data = json.load(f)
-        
-    if not date:
-        dates = sorted(list(set(post["fecha"] for post in data)), reverse=True)
-        if not dates: return []
-        date = dates[0]
-        
-    return [item for item in data if item["fecha"] == date and item.get("estado") == "pendiente"]
-
-@app.get("/api/published")
-def get_published(date: str = None):
-    """Devuelve las noticias filtradas por fecha que ya fueron publicadas."""
-    if not os.path.exists(DB_PATH):
-        return []
-    with open(DB_PATH, "r", encoding="utf-8") as f:
-        data = json.load(f)
-        
-    if not date:
-        dates = sorted(list(set(post["fecha"] for post in data)), reverse=True)
-        if not dates: return []
-        date = dates[0]
-        
-    return [item for item in data if item["fecha"] == date and item.get("estado") == "publicado"]
-
-@app.post("/api/save-caption")
-def save_caption(req: SaveRequest):
-    if not os.path.exists(DB_PATH):
-        raise HTTPException(status_code=404, detail="DB not found")
-    with open(DB_PATH, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    post = next((item for item in data if item["id"] == req.post_id), None)
-    if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
-    
-    # 1. Actualizar memoria global
-    post["caption_ig"] = req.caption
-    with open(DB_PATH, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
-        
-    # 2. Sincronizar con el archivo local si existe
-    # La ruta se deduce de la fecha y el ID
-    local_path = os.path.join("output", post["fecha"], post["id"], "post_metadata.json")
-    if os.path.exists(local_path):
-        with open(local_path, "r", encoding="utf-8") as f:
-            local_meta = json.load(f)
-        local_meta["caption_ig"] = req.caption
-        local_meta["estado_edicion"] = "editado_manualmente"
-        with open(local_path, "w", encoding="utf-8") as f:
-            json.dump(local_meta, f, indent=4, ensure_ascii=False)
-            
-    return {"status": "success"}
-
 @app.post("/api/regenerate")
-def regenerate_images(req: RegenRequest):
-    global generator_running
-    if generator_running:
-        raise HTTPException(status_code=400, detail="El sistema está ocupado. Intente más tarde.")
-        
-    if not os.path.exists(DB_PATH):
-        raise HTTPException(status_code=404, detail="DB not found")
-    with open(DB_PATH, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    post = next((item for item in data if item["id"] == req.post_id), None)
-    if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
-    
-    # Activar estado para los logs
-    generator_running = True
-    
-    # Redirigir stdout para que la consola lo lea
-    import sys
-    # Usar un log específico para este post para que el dashboard lo pueda leer
-    log_path = os.path.join("output", f"{req.post_id}_local.log")
-    log_file = open(log_path, "w", encoding="utf-8")
-    
-    class Logger(object):
-        def __init__(self, file, stdout):
-            self.file = file
-            self.stdout = stdout
-        def write(self, text):
-            self.file.write(text)
-            self.stdout.write(text)
-            self.file.flush()
-        def flush(self):
-            self.file.flush()
-            self.stdout.flush()
-
-    original_stdout = sys.stdout
-    sys.stdout = Logger(log_file, original_stdout)
-    
+async function regenerate(req: RegenRequest):
     try:
-        print(f"🔄 [ControlCenter]: Generando/Regenerando imágenes para {req.post_id}...")
+        with open("pending_posts.json", "r", encoding="utf-8") as f:
+            posts = json.load(f)
+        
+        post = next((p for p in posts if p["id"] == req.post_id), None)
+        if not post:
+            raise HTTPException(status_code=404, detail="Post no encontrado")
+        
         disenador = DisenadorNanoBanana()
-        # Reusamos la carpeta pero con un nuevo timestamp para evitar cache del browser
-        timestamp_regen = datetime.now().strftime("%H%M%S")
         
-        # Obtener o crear carpeta de imágenes
-        # El ID es tipo "123456_0", la carpeta es "noticia_123456_0"
-        folder_name = f"noticia_{req.post_id}"
-        # Buscamos la carpeta en el directorio de la fecha del post
-        post_dir = os.path.join("output", post["fecha"], folder_name)
-        img_folder = os.path.join(post_dir, "imagenes")
-        if not os.path.exists(img_folder): os.makedirs(img_folder)
+        hook = req.custom_title or post.get("titulo_imagen") or post["titulo_original"][:30]
+        prompt = req.custom_prompt or post.get("prompt_visual") or f"Cyberpunk security news: {post['titulo_original']}"
         
-        # 1. Aplicar overrides manuales si vienen del usuario
-        if req.custom_title:
-            post["titulo_imagen"] = req.custom_title
-        if req.custom_prompt:
-            post["prompt_visual"] = req.custom_prompt
-
-        nuevas_rutas = disenador.generar_imagenes_opciones(
-            prompt_visual=post.get("prompt_visual", "Cyberpunk digital security"),
-            titulo_imagen=post.get("titulo_imagen", "ALERTA"),
-            output_dir=img_folder,
-            base_filename=f"regen_{timestamp_regen}",
-            max_images=1 
+        # Guardar los campos personalizados en el JSON para persistencia
+        post["titulo_imagen"] = hook
+        post["prompt_visual"] = prompt
+        
+        img_dir = os.path.join(post["output_path"], "imagenes")
+        # Generamos una nueva variante
+        timestamp = datetime.now().strftime("%H%M%S")
+        new_paths = disenador.generar_imagenes_opciones(
+            prompt, hook, 
+            output_dir=img_dir, 
+            base_filename=f"regen_{timestamp}", 
+            max_images=1
         )
         
-        if nuevas_rutas:
-            # En lugar de sobreescribir, agregamos a la lista de opciones
-            if "imagenes" not in post: post["imagenes"] = []
-            post["imagenes"].extend(nuevas_rutas)
+        if new_paths:
+            # Añadir a la lista de imágenes (si quieres) o reemplazar?
+            # Por ahora, añadimos para que el usuario elija
+            # Normalizamos paths para web
+            clean_paths = [p.replace("\\", "/") for p in new_paths]
+            post["imagenes"].extend(clean_paths)
             post["has_images"] = True
             
-            with open(DB_PATH, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=4, ensure_ascii=False)
+            with open("pending_posts.json", "w", encoding="utf-8") as f:
+                json.dump(posts, f, indent=4, ensure_ascii=False)
             
-            # También actualizar el meta local
-            local_meta_path = os.path.join(post_dir, "post_metadata.json")
-            if os.path.exists(local_meta_path):
-                with open(local_meta_path, "w", encoding="utf-8") as f:
-                    json.dump(post, f, indent=4, ensure_ascii=False)
-                    
-            print("✅ [ControlCenter]: Imágenes generadas con éxito.")
             return post
         else:
-            print("❌ [ControlCenter]: No se pudieron generar las imágenes.")
-            raise HTTPException(status_code=500, detail="Error al generar imágenes")
-    finally:
-        sys.stdout = original_stdout
-        log_file.close()
-        generator_running = False
-
-@app.post("/api/approve")
-def approve_post(req: ApprovalRequest):
-    global generator_running
-    if generator_running:
-        raise HTTPException(status_code=400, detail="El sistema está ocupado. Intente más tarde.")
-        
-    if not os.path.exists(DB_PATH):
-        raise HTTPException(status_code=404, detail="DB not found")
-        
-    with open(DB_PATH, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    
-    post = next((item for item in data if item["id"] == req.post_id), None)
-    if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
-        
-    # Activar estado para los logs
-    generator_running = True
-    
-    # Redirigir stdout para que la consola lo lea
-    import sys
-    log_path = os.path.join("output", "last_run.log")
-    log_file = open(log_path, "w", encoding="utf-8")
-    
-    class Logger(object):
-        def __init__(self, file, stdout):
-            self.file = file
-            self.stdout = stdout
-        def write(self, text):
-            self.file.write(text)
-            self.stdout.write(text)
-            self.file.flush()
-        def flush(self):
-            self.file.flush()
-            self.stdout.flush()
-
-    original_stdout = sys.stdout
-    sys.stdout = Logger(log_file, original_stdout)
-    
-    try:
-        image_path = post["imagenes"][req.image_index]
-        caption = post["caption_ig"]
-        
-        print(f"🚀 [ControlCenter]: Iniciando publicación del post {req.post_id}...")
-        print(f"📸 Imagen: {image_path}")
-        publicador = PublicadorComunitario()
-        success = publicador.publicar_en_instagram(image_path, caption)
-        
-        if success:
-            print("✅ [ControlCenter]: Publicación completada con éxito.")
-            post["estado"] = "publicado"
-            post["imagen_elegida"] = image_path
-            with open(DB_PATH, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=4, ensure_ascii=False)
-            return {"status": "success", "message": "Publicado en Instagram"}
-        else:
-            print("❌ [ControlCenter]: Error reportado por el PublicadorComunitario.")
-            raise HTTPException(status_code=500, detail="Error en Instagram. Revisa la consola o logs.")
+            raise HTTPException(status_code=500, detail="Error en generación de imagen")
             
     except Exception as e:
-        print(f"🛑 Error crítico en /api/approve: {e}")
-        raise HTTPException(status_code=500, detail=f"Excepción: {str(e)}")
-    finally:
-        sys.stdout = original_stdout
-        log_file.close()
-        generator_running = False
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/")
-def read_root():
-    from fastapi.responses import FileResponse
-    return FileResponse("static/index.html")
+class ApproveRequest(BaseModel):
+    post_id: str
+    image_index: int
+
+@app.post("/api/approve")
+async function approve(req: ApproveRequest):
+    try:
+        # 1. Cargar post
+        with open("pending_posts.json", "r", encoding="utf-8") as f:
+            posts = json.load(f)
+        
+        idx = next((i for i, p in enumerate(posts) if p["id"] == req.post_id), None)
+        if idx is None:
+            raise HTTPException(status_code=404, detail="Post no encontrado")
+        
+        post = posts[idx]
+        image_path = post["imagenes"][req.image_index]
+        
+        # 2. Publicar
+        publicador = PublicadorComunitario()
+        success = publicador.publicar_feed(image_path, post["caption_ig"])
+        
+        if success:
+            # 3. Mover a publicados
+            post["estado"] = "publicado"
+            post["fecha_publicacion"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            post["imagen_elegida"] = image_path
+            
+            published = []
+            if os.path.exists("published_posts.json"):
+                with open("published_posts.json", "r", encoding="utf-8") as f:
+                    published = json.load(f)
+            
+            published.append(post)
+            with open("published_posts.json", "w", encoding="utf-8") as f:
+                json.dump(published, f, indent=4, ensure_ascii=False)
+            
+            # Quitar de pendientes
+            posts.pop(idx)
+            with open("pending_posts.json", "w", encoding="utf-8") as f:
+                json.dump(posts, f, indent=4, ensure_ascii=False)
+                
+            return {"status": "success"}
+        else:
+            raise HTTPException(status_code=500, detail="Error al publicar en Instagram")
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/publish-story")
-def publish_story(req: StoryRequest):
-    global generator_running
-    if not os.path.exists(DB_PATH):
-        raise HTTPException(status_code=404, detail="DB not found")
-        
-    with open(DB_PATH, "r", encoding="utf-8") as f:
-        data = json.load(f)
-        
-    post = next((item for item in data if item["id"] == req.post_id), None)
-    if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
-        
-    if req.image_index < 0 or req.image_index >= len(post.get("imagenes", [])):
-        raise HTTPException(status_code=400, detail="Índice de imagen inválido")
-        
-    image_path = post["imagenes"][req.image_index]
-    link_url = post.get("fuente", "https://thehackernews.com") # Link original
-    
-    # Marcar como ocupado para logs terminales
-    generator_running = True
-    log_path = os.path.join("output", "last_run.log")
-    with open(log_path, "w", encoding="utf-8") as f:
-        f.write(f"📢 [{datetime.now().strftime('%H:%M:%S')}] Iniciando publicación de Story...\n")
-        f.write(f"🔗 Link: {link_url}\n")
-    
+async function publish_story(req: ApproveRequest):
     try:
+        # Cargar post
+        with open("pending_posts.json", "r", encoding="utf-8") as f:
+            posts = json.load(f)
+        
+        post = next((p for p in posts if p["id"] == req.post_id), None)
+        if not post:
+            # Reintentar en publicados
+            if os.path.exists("published_posts.json"):
+                with open("published_posts.json", "r", encoding="utf-8") as f:
+                    posts_pub = json.load(f)
+                post = next((p for p in posts_pub if p["id"] == req.post_id), None)
+        
+        if not post:
+            raise HTTPException(status_code=404, detail="Post no encontrado")
+            
+        image_path = post["imagenes"][req.image_index]
+        link = post["fuente"]
+        
         publicador = PublicadorComunitario()
-        success = publicador.publicar_en_story(image_path, link_url)
+        success = publicador.publicar_story(image_path, link=link)
+        
         if success:
-            return {"status": "success", "message": "Story publicada!"}
+            return {"status": "success"}
         else:
             raise HTTPException(status_code=500, detail="Error al publicar story")
-    finally:
-        generator_running = False
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Servir estáticos
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
+app.mount("/output", StaticFiles(directory="output"), name="output")
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
