@@ -1,52 +1,25 @@
-# SegurInfo PT 🛡️📡🚀
+# ⚡ SegurInfoPT: Cyberpunk Security Dashboard
 
-**Unified Cyberpunk Security Digest Dashboard with Instagram Stories & Feed Integration.**
+Sistema automatizado de vigilancia (OSINT) y publicación de noticias de ciberseguridad con estética Cyberpunk.
 
-Democratizando la ciberseguridad para Argentina y Latinoamérica mediante IA y automatización estética.
+## 🚀 Características principales
+- **🕵️ Investigador NanoBanana:** Scraper inteligente que busca las últimas vulnerabilidades e incidentes.
+- **✍️ Redactor AI:** Genera captions optimizados para Instagram en español.
+- **🎨 Diseñador Flux:** Crea piezas visuales 9:16 con estética neon-glitch usando Pollinations AI.
+- **📱 Publicador Automático:** Sube directamente a Feed y Stories de Instagram.
+- **📟 Dashboard OSINT:** Interfaz web en tiempo real para moderar y disparar publicaciones.
 
-## 🌟 Características Principales
-- **Investigador OSINT:** Scrapea automáticamente noticias de seguridad de fuentes líderes (RSS).
-- **Redactor 'Para Todos':** Traduce y simplifica tecnicismos complejos para el público general usando Gemini 3.1 Flash.
-- **Diseñador NanoBanana:** Genera posters cibernéticos en formato **9:16 (768x1344)** optimizados para Instagram.
-- **Story Integration:** Publicación directa de Historias con **Link Stickers clickeables**.
-- **Dashboard Cyberpunk:** Interfaz visual futurista para curar, editar y disparar publicaciones.
+## 🛠️ Instalación rápida
+1. Clona el repositorio: `git clone https://github.com/colicolicoli/SegurInfoPT.git`
+2. Crea un entorno virtual: `python -m venv venv`
+3. Activa el venv y instala dependencias: `pip install -r requirements.txt`
+4. Configura tu `.env` siguiendo el `.env.example`.
+5. Ejecuta: `python app.py`
 
-## 🚀 Instalación Rápida
-
-1. **Clonar el repo:**
-   ```bash
-   git clone https://github.com/colicolicoli/SegurInfoPT.git
-   cd SegurInfoPT
-   ```
-
-2. **Configurar Entorno:**
-   Crea un archivo `.env` con:
-   ```env
-   GEMINI_API_KEY=tu_clave
-   POLLINATIONS_API_KEY=tu_clave
-   IG_USERNAME=usuario_instagram
-   IG_PASSWORD=password_instagram
-   ```
-
-3. **Instalar Dependencias:**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # En Windows: venv\Scripts\activate
-   pip install fastapi uvicorn google-genai instagrapi requests feedparser beautifulsoup4 python-dotenv
-   ```
-
-4. **Lanzar Dashboard:**
-   ```bash
-   python app.py
-   ```
-   Accede a: `http://localhost:5000`
-
-## 🛠️ Stack Tecnológico
-- **Backend:** Python / FastAPI
-- **AI (Texto):** Google Gemini 3.1 Flash-Lite
-- **AI (Imagen):** Pollinations AI (Motor Flux)
-- **IG Engine:** Instagrapi
-- **Frontend:** HTML5 / CSS3 (Vanilla Cyberpunk Design)
+## 📂 Estructura del Proyecto
+- `/agents`: El ecosistema de agentes especializados (Investigador, Redactor, Diseñador, Publicador).
+- `/static`: Interfaz web interactiva del Dashboard.
+- `app.py`: Servidor central y orquestador.
 
 ---
-*Desarrollado con ❤️ para la comunidad de Seguridad de la Información.*
+Desarrollado para el equipo de **SegurInfo**.
