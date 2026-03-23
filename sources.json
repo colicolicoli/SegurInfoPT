@@ -1,0 +1,77 @@
+{
+    "rss_feeds": [
+        {
+            "name": "SeguInfo (AR)",
+            "url": "https://blog.segu-info.com.ar/feeds/posts/default?alt=rss"
+        },
+        {
+            "name": "ESET WeLiveSecurity (LATAM)",
+            "url": "https://www.welivesecurity.com/la-es/feed/"
+        },
+        {
+            "name": "BleepingComputer (Global)",
+            "url": "https://www.bleepingcomputer.com/feed/"
+        },
+        {
+            "name": "The Hacker News (Global)",
+            "url": "https://feeds.feedburner.com/TheHackersNews"
+        },
+        {
+            "name": "CyberScoop (Incidents)",
+            "url": "https://cyberscoop.com/feed/"
+        },
+        {
+            "name": "Krebs on Security (Deep Intel)",
+            "url": "https://krebsonsecurity.com/feed/"
+        },
+        {
+            "name": "Hispasec - Una al Día (ES/LATAM)",
+            "url": "https://unaaldia.hispasec.com/feed"
+        },
+        {
+            "name": "Kaspersky Daily (LATAM)",
+            "url": "https://latam.kaspersky.com/blog/feed/"
+        },
+        {
+            "name": "DragonJAR (LATAM)",
+            "url": "https://www.dragonjar.org/feed"
+        },
+        {
+            "name": "Ciberseguridad LATAM (News)",
+            "url": "https://www.ciberseguridadlatam.com/feed/"
+        },
+        {
+            "name": "Malwarebytes Labs (Global/Scams)",
+            "url": "https://www.malwarebytes.com/blog/feed/index.xml"
+        },
+        {
+            "name": "CISA Cyber Alerts (Global Vulns)",
+            "url": "https://www.cisa.gov/cybersecurity-advisories/all.xml"
+        }
+    ],
+    "keywords": [
+        "vulnerability",
+        "attack",
+        "data breach",
+        "malware",
+        "ransomware",
+        "phishing",
+        "Argentina",
+        "LATAM",
+        "vulnerabilidad",
+        "ataque",
+        "filtración",
+        "estafa",
+        "fraude",
+        "robo de datos",
+        "suplantación de identidad",
+        "concientización",
+        "scam",
+        "brecha",
+        "cibercrimen",
+        "alerta",
+        "cuento del tío",
+        "engaño",
+        "contraseña"
+    ]
+}

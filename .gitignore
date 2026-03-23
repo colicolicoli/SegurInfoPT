@@ -1,0 +1,21 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment variables
+.env
+
+# Project specific
+output/
+*.log
+*.txt
+*.json
+!sources.json
+!pending_posts.json
+
+# IDEs
+.vscode/
+.idea/
