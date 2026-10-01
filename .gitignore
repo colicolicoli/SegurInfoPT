@@ -1,5 +1,6 @@
 # Python
 venv/
+venv_windows/
 __pycache__/
 *.pyc
 *.pyo
@@ -7,6 +8,8 @@ __pycache__/
 
 # Environment variables
 .env
+.env.*
+!.env.example
 
 # Project specific
 output/
@@ -16,6 +19,11 @@ output/
 !sources.json
 !pending_posts.json
 
-# IDEs
+# Media outputs
+output/stories/
+*.mp4
+
+# OS and IDEs
+.DS_Store
 .vscode/
 .idea/

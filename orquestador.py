@@ -34,9 +34,9 @@ def generar_pendientes():
     sys.stdout = Logger(log_file, original_stdout)
 
     try:
-        api_key = os.getenv("GEMINI_API_KEY")
+        api_key = os.getenv("GROQ_API_KEY")
         if not api_key:
-            print("🛑 ERROR: Faltan las credenciales de la API de Gemini.")
+            print("🛑 ERROR: Faltan las credenciales de la API de Groq (GROQ_API_KEY).")
             return
 
         print("==================================================")

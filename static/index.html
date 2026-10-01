@@ -547,11 +547,11 @@
             const terminalCard = document.getElementById(`terminal-${postId}`);
             const errorOverlay = card.querySelector('.error-overlay');
             
-            // Capturamos los campos editados por el usuario para inyectar "onda"
             const customTitle = card.querySelector('.hook-edit') ? card.querySelector('.hook-edit').value : "";
             const customPrompt = card.querySelector('.prompt-edit') ? card.querySelector('.prompt-edit').value : "";
+            const motor = card.querySelector('.motor-select') ? card.querySelector('.motor-select').value : "pollinations_flux";
             
-            if (!confirm("Esto ocupará créditos de IA. ¿Deseas continuar?")) return;
+            if (!confirm("Esto ocupará créditos de IA (si aplica al motor elegido). ¿Deseas continuar?")) return;
             
             if (btn) {
                 btn.disabled = true;
@@ -560,7 +560,7 @@
             
             if (terminalCard) {
                 terminalCard.style.display = 'block';
-                document.getElementById(`terminal-body-${postId}`).innerHTML = "Invocando al Diseñador AI con Hook personalizado...\n";
+                document.getElementById(`terminal-body-${postId}`).innerHTML = `Invocando al Diseñador AI [Motor: ${motor}]...\n`;
                 document.getElementById(`terminal-status-${postId}`).innerText = "EJECUTANDO...";
                 startPollingLogs('local', postId);
             }
@@ -573,7 +573,8 @@
                     body: JSON.stringify({ 
                         post_id: postId,
                         custom_title: customTitle,
-                        custom_prompt: customPrompt
+                        custom_prompt: customPrompt,
+                        motor: motor
                     })
                 });
 
@@ -772,9 +773,19 @@
                             <textarea class="caption-edit">${post.caption_ig}</textarea>
                             
                             <div style="margin-top:15px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; border: 1px solid #333;">
-                                <label class="metadata" style="color:var(--neon-pink); display:block; margin-bottom:5px;">🎨 CONFIGURACIÓN DE IMAGEN (HOOK):</label>
-                                <input type="text" class="hook-edit" value="${post.titulo_imagen || ''}" placeholder="Ej: ALERTA PHISHING" style="width:100%; background:#111; color:white; border:1px solid #444; padding:8px; border-radius:4px; margin-bottom:10px;">
-                                <label class="metadata">Prompt Visual (Inglés):</label>
+                                <label class="metadata" style="color:var(--neon-pink); display:block; margin-bottom:10px;">🎨 CONTROL DE IA VISUAL:</label>
+                                
+                                <label class="metadata" style="display:block; margin-bottom:5px;">Motor de Generación:</label>
+                                <select class="motor-select" style="width:100%; background:#111; color:var(--neon-blue); border:1px solid #444; padding:8px; border-radius:4px; margin-bottom:15px; font-family:'Orbitron', sans-serif;">
+                                    <option value="pollinations_flux" selected>Pollinations Flux (Rápido)</option>
+                                    <option value="pollinations_zimage">Pollinations Z-Image (Mejor Calidad)</option>
+                                    <option value="gemini_imagen">Gemini Imagen 3.0 (Pago)</option>
+                                </select>
+
+                                <label class="metadata">Texto Overlay (Hook):</label>
+                                <input type="text" class="hook-edit" value="${post.titulo_imagen || ''}" placeholder="Ej: ALERTA PHISHING" style="width:100%; background:#111; color:white; border:1px solid #444; padding:8px; border-radius:4px; margin-bottom:10px; margin-top:5px;">
+                                
+                                <label class="metadata">Prompt Visual de Escena (Inglés):</label>
                                 <textarea class="prompt-edit" style="height:60px; font-size:0.7rem;">${post.prompt_visual || ''}</textarea>
                             </div>
 

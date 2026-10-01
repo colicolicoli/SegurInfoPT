@@ -1,34 +1,53 @@
 import os
 import json
-from google import genai
-from google.genai import types
-from pydantic import BaseModel, Field
+import re
+from groq import Groq
 import feedparser
 from datetime import datetime, timedelta
 
-class ResumenTecnico(BaseModel):
-    titulo_original: str = Field(description="El título de la noticia SIEMPRE TRADUCIDO AL ESPAÑOL de forma atractiva.")
-    enlace: str = Field(description="Enlace URL a la fuente original")
-    resumen_tecnico: str = Field(description="Resumen técnico detallado (aprox 250-350 palabras) explicando el vector de ataque, el impacto y posibles mitigaciones.")
-    categoria: str = Field(description="Categoría de la noticia: 'Vulnerabilidad', 'Incidente', 'Malware', 'Latam' o 'General'.")
+def limpiar_cve_ficticios(texto: str) -> str:
+    """Elimina marcadores de posición de CVE inventados o placeholders como CVE-2026-XXXXX."""
+    if not texto:
+        return ""
+    patron = r'\(?CVE[-‑]?[0-9]{4}[-‑]?[XAYBxa-yb_]{2,}\)?'
+    texto = re.sub(patron, '', texto)
+    texto = re.sub(r' {2,}', ' ', texto)
+    return texto.strip()
 
 class InvestigadorSegurInfo:
     def __init__(self):
-        # Usamos el modelo Next-Gen confirmado por el usuario
-        self.model_name = 'gemini-3.1-flash-lite-preview'
+        self.model_name = os.environ.get("GROQ_MODEL", 'openai/gpt-oss-120b')
         self.history_file = os.path.join("output", "processed_links.json")
         self.sources_file = "sources.json"
         self.system_prompt = """
         Eres un investigador de ciberseguridad experto en OSINT. Tu tarea es filtrar y resumir noticias relevantes.
         
-        CLSIFICACIÓN (CRÍTICO):
+        CLASIFICACIÓN (CRÍTICO):
         - 'Vulnerabilidad': Errores de software, CVEs, parches críticos.
         - 'Incidente': Filtraciones de datos, ataques activos, ransomware, intrusiones.
         - 'Malware': Nuevos troyanos, virus, campañas de phishing técnico.
         - 'Latam': Cualquier noticia que afecte específicamente a Argentina o Latinoamérica.
         - 'General': Novedades tecnológicas de seguridad, leyes, o tendencias.
 
-        Resumen: Detallado y profesional.
+        REGLA ESTRICTA DE CVE:
+        Está ESTRICTAMENTE PROHIBIDO inventar o usar marcadores ficticios como 'CVE-2026-XXXXX', 'CVE-XXXX', etc.
+        Solo incluye un código CVE si la fuente original lo menciona EXPLÍCITAMENTE (ej: CVE-2024-12345).
+        Si la noticia NO especifica un código CVE concreto y real, NO menciones la sigla CVE ni ningún código inventado.
+
+        Resumen: Detallado y profesional (aprox 250-350 palabras) explicando el vector de ataque, impacto y mitigaciones.
+        
+        FORMATO DE RESPUESTA:
+        Debes responder EXCLUSIVAMENTE con un objeto JSON válido con la siguiente estructura:
+        {
+            "noticias": [
+                {
+                    "titulo_original": "Título atractivo siempre traducido al español",
+                    "enlace": "URL original de la noticia",
+                    "resumen_tecnico": "Resumen técnico detallado de 250-350 palabras",
+                    "categoria": "Vulnerabilidad | Incidente | Malware | Latam | General"
+                }
+            ]
+        }
         """
 
     def _load_history(self):
@@ -81,33 +100,42 @@ class InvestigadorSegurInfo:
 
         print(f"🕵️‍♂️ [@InvestigadorSegurInfo]: {len(raw_news)} novedades detectadas. Seleccionando las {max_items} mejores...")
         
-        input_text = f"Analiza estas noticias y devuelve un JSON con las {max_items} más impactantes (vulnerabilidades, ataques, incidentes):\n"
+        input_text = f"Analiza estas noticias y devuelve un JSON con las {max_items} más impactantes (vulnerabilidades, ataques, incidentes). RECUERDA: no inventes códigos CVE ficticios (como CVE-XXXX).\n\n"
         for n in raw_news:
-            input_text += f"Título: {n['title']}\nLink: {n['link']}\n\n"
+            resumen_previo = n.get('summary', '').strip()
+            input_text += f"Título: {n['title']}\nLink: {n['link']}\n"
+            if resumen_previo:
+                input_text += f"Detalle: {resumen_previo[:400]}\n"
+            input_text += "\n"
 
         try:
-            client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-            # Pedimos una lista de noticias
-            class ListaResumenes(BaseModel):
-                noticias: list[ResumenTecnico]
+            groq_key = os.environ.get("GROQ_API_KEY")
+            if not groq_key:
+                print("🛑 [@InvestigadorSegurInfo]: Falta GROQ_API_KEY en .env")
+                return []
 
-            response = client.models.generate_content(
+            client = Groq(api_key=groq_key)
+            completion = client.chat.completions.create(
                 model=self.model_name,
-                contents=self.system_prompt + "\n\nTEXTO:\n" + input_text,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=ListaResumenes,
-                    temperature=0.3
-                )
+                messages=[
+                    {"role": "system", "content": self.system_prompt},
+                    {"role": "user", "content": input_text}
+                ],
+                response_format={"type": "json_object"},
+                temperature=0.3
             )
-            data = json.loads(response.text)
+            raw_content = completion.choices[0].message.content
+            data = json.loads(raw_content)
+            noticias_filtradas = data.get("noticias", [])
             
-            # Guardar en historial para no repetir
-            for item in data["noticias"]:
-                self._save_history(item["enlace"])
+            # Sanitizar y guardar en historial
+            for item in noticias_filtradas:
+                item["resumen_tecnico"] = limpiar_cve_ficticios(item.get("resumen_tecnico", ""))
+                item["titulo_original"] = limpiar_cve_ficticios(item.get("titulo_original", ""))
+                self._save_history(item.get("enlace", ""))
                 
-            print(f"✅ [@InvestigadorSegurInfo]: {len(data['noticias'])} noticias filtradas con éxito.")
-            return data["noticias"]
+            print(f"✅ [@InvestigadorSegurInfo]: {len(noticias_filtradas)} noticias filtradas con éxito con Groq ({self.model_name}).")
+            return noticias_filtradas
         except Exception as e:
-            print(f"🕵️‍♂️ [@InvestigadorSegurInfo]: Error [API TEXTO]: {e}")
+            print(f"🕵️‍♂️ [@InvestigadorSegurInfo]: Error [API GROQ]: {e}")
             return []
